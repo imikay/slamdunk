@@ -30,28 +30,88 @@ def sendRequest(url):
     ser.write('AT+HTTPTERM\r')
     time.sleep(1)
     print ser.read(1000)
+
     return response
 
 def start_count():
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(12, GPIO.IN)
+    GPIO.setup(36, GPIO.IN)
 
     count = 0
 
     start_time = time.time()
     print "New game starting ..."
     while (time.time() - start_time) < 60 :
-          i=GPIO.input(12)
+          i=GPIO.input(36)
 
-          if i == 0:
+          if i == 1:
                count = count + 3
                print "Goal! Current score is ", count
-               time.sleep(0.8)
+          time.sleep(0.2)
 
-    GPIO.cleanup(12)
+    GPIO.cleanup(36)
     print "Time is up, your total score is ", count    
     return count
+
+def gate_control(command):
+    GPIO.setmode(GPIO.BOARD)
+
+    # Define GPIO signals to use
+    StepPins = [13,15,16,18]
+
+    # Set all pins as output
+    for pin in StepPins:
+      print "Setup pins"
+      GPIO.setup(pin,GPIO.OUT)
+      GPIO.output(pin, False)
+
+    Seq = [[1,0],
+           [1,1,],
+           [0,1]]
+
+    StepCount = len(Seq)
+
+    # Read wait time from command line
+    
+    WaitTime = 1/float(1000)
+
+    Step = 0
+
+    now = time.time()
+    # Start main loop
+    while True:
+
+      print Step,
+      print Seq[Step]
+
+      if (command < 0):
+        GPIO.output(16, True)
+
+      for pin in range(0, 2):
+        xpin = StepPins[pin]
+        if Seq[Step][pin]!=0:
+          print " Enable GPIO %i" %(xpin)
+          GPIO.output(xpin, True)
+        else:
+          GPIO.output(xpin, False)
+
+      Step += 1
+
+      # If we reach the end of the sequence
+      # start again
+      if (Step>=StepCount):
+        Step = 0
+
+      if (time.time() - now) > 5:
+        break
+         
+      # Wait before moving on
+      time.sleep(WaitTime)
+
+       
+      
+                                                   
 
 ser = serial.Serial(
     port='/dev/ttyAMA0',
@@ -76,16 +136,18 @@ while True:
         print new_game
         print new_game[2].strip()
         if new_game[2].strip() == '1':
+            gate_control(1)
             count = start_count()
+            gate_control(-1)
             sendRequest('http://slamdunk.gousu.com/play/end/%s' % count)
         else:
             print 'No one is playing'
         time.sleep(3)
     except KeyboardInterrupt:
         print "Exit \n"
-    except:
-        print 'Connection failed'
-    finally:
-        ser.close()
+    #except:
+    #    print 'Connection failed'
+    #finally:
+    #    ser.close()
 
 
