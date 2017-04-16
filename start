@@ -1,0 +1,1 @@
+screen -D -m -S slamdunk python /home/pi/slamdunk/gsm.py &
